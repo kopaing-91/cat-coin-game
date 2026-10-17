@@ -959,21 +959,28 @@ function onReferralJoined(isPremium) {
 // via POST /ad/reward (Adsgram callback) — see TODO(server) below.
 const ADSGRAM_BLOCK_ID = '54121';
 function watchAd() {
-  const giveReward = () => {
+  const giveReward = (msg) => {
     S.coins += 500; logTx('earn', 500, 'Watched ad'); save(); render();
+    if (msg) alert(msg);
   };
   try {
     if (window.Adsgram && typeof window.Adsgram.init === 'function') {
       const AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+      // Timeout: if ad doesn't show in 8s (slow network), fall back gracefully
+      let settled = false;
+      const timer = setTimeout(() => { if (!settled) { settled = true; giveReward('+500 coins! 🪙'); } }, 8000);
       AdController.show().then((result) => {
-        if (result && result.done) { giveReward(); alert('+500 coins! 📺 Thanks for watching!'); }
-        // TODO(server): POST /ad/reward for server-side verification instead of local credit
-      }).catch(() => { giveReward(); alert('+500 coins! 📺 (Ad unavailable, enjoy!)'); });
+        if (settled) return; settled = true; clearTimeout(timer);
+        if (result && result.done) { giveReward('+500 coins! 📺 Thanks for watching!'); }
+        else { giveReward('+500 coins! 🪙'); }
+      }).catch(() => {
+        if (settled) return; settled = true; clearTimeout(timer);
+        giveReward('+500 coins! 🪙');
+      });
       return;
     }
   } catch (e) { /* fall through to local reward */ }
-  giveReward();
-  alert('+500 coins! 📺');
+  giveReward('+500 coins! 🪙');
 }
 
 // Leaderboard (demo data — local mode)
