@@ -779,7 +779,6 @@ function tapSound() {
     g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
     o.connect(g); g.connect(_ac.destination); o.start(t); o.stop(t + 0.13);
   } catch (e) {}
-  try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
 }
 const coin = document.getElementById('coin'), wrap = document.getElementById('coinWrap');
 coin.addEventListener('pointerdown', e => {
@@ -959,28 +958,35 @@ function onReferralJoined(isPremium) {
 // via POST /ad/reward (Adsgram callback) — see TODO(server) below.
 const ADSGRAM_BLOCK_ID = '54121';
 function watchAd() {
-  const giveReward = (msg) => {
+  const btn = document.querySelector('.boost-btn');
+  const origHTML = btn ? btn.innerHTML : '';
+  const setLoading = (on) => { if (btn) { btn.innerHTML = on ? '⏳ Loading ad...' : origHTML; btn.style.opacity = on ? '.6' : '1'; btn.style.pointerEvents = on ? 'none' : 'auto'; } };
+  const giveReward = () => {
     S.coins += 500; logTx('earn', 500, 'Watched ad'); save(); render();
-    if (msg) alert(msg);
+    alert('+500 coins! 📺 Thanks for watching!');
   };
+  setLoading(true);
   try {
     if (window.Adsgram && typeof window.Adsgram.init === 'function') {
       const AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
-      // Timeout: if ad doesn't show in 8s (slow network), fall back gracefully
       let settled = false;
-      const timer = setTimeout(() => { if (!settled) { settled = true; giveReward('+500 coins! 🪙'); } }, 8000);
+      const timer = setTimeout(() => {
+        if (!settled) { settled = true; setLoading(false);
+          alert('⚠️ Ad could not load. Check your connection and try again.'); }
+      }, 15000);
       AdController.show().then((result) => {
-        if (settled) return; settled = true; clearTimeout(timer);
-        if (result && result.done) { giveReward('+500 coins! 📺 Thanks for watching!'); }
-        else { giveReward('+500 coins! 🪙'); }
+        if (settled) return; settled = true; clearTimeout(timer); setLoading(false);
+        if (result && result.done) { giveReward(); }
+        else { alert('⚠️ Please watch the full ad to earn +500 coins.'); }
       }).catch(() => {
-        if (settled) return; settled = true; clearTimeout(timer);
-        giveReward('+500 coins! 🪙');
+        if (settled) return; settled = true; clearTimeout(timer); setLoading(false);
+        alert('⚠️ Ad failed to load. Try again in a moment.');
       });
       return;
     }
-  } catch (e) { /* fall through to local reward */ }
-  giveReward('+500 coins! 🪙');
+  } catch (e) { /* fall through */ }
+  setLoading(false);
+  alert('⚠️ Ad service unavailable. Try again later.');
 }
 
 // Leaderboard (demo data — local mode)
